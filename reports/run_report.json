@@ -1,0 +1,312 @@
+{
+  "source": {
+    "repo": "https://github.com/statsbomb/open-data",
+    "commit": "4b73468fc5b0f1950f9f66fada70ad3a4f9327cb",
+    "files": 8551,
+    "bytes": 12914812642
+  },
+  "seconds": {
+    "staging": 249.7,
+    "model": 66.6,
+    "marts": 6.9,
+    "quality": 39.1,
+    "total": 362.5
+  },
+  "tables": {
+    "bridge_shot_player": {
+      "rows": 1305746,
+      "bytes": 10686822
+    },
+    "dim_competition_season": {
+      "rows": 80,
+      "bytes": 4056
+    },
+    "dim_date": {
+      "rows": 1362,
+      "bytes": 15838
+    },
+    "dim_event_type": {
+      "rows": 35,
+      "bytes": 1346
+    },
+    "dim_match": {
+      "rows": 3961,
+      "bytes": 90174
+    },
+    "dim_play_pattern": {
+      "rows": 9,
+      "bytes": 947
+    },
+    "dim_player": {
+      "rows": 11889,
+      "bytes": 421267
+    },
+    "dim_position": {
+      "rows": 26,
+      "bytes": 1158
+    },
+    "dim_team": {
+      "rows": 354,
+      "bytes": 7886
+    },
+    "fact_event": {
+      "rows": 13911986,
+      "bytes": 724529663
+    },
+    "fact_lineup": {
+      "rows": 152133,
+      "bytes": 1517904
+    },
+    "fact_pass": {
+      "rows": 3836550,
+      "bytes": 225944308
+    },
+    "fact_shot": {
+      "rows": 101227,
+      "bytes": 8986363
+    },
+    "mart_player_season": {
+      "rows": 18150,
+      "bytes": 460441
+    },
+    "mart_team_match": {
+      "rows": 7922,
+      "bytes": 318344
+    }
+  },
+  "warehouse_bytes": 972986517,
+  "staging_bytes": 1585606389,
+  "checks": [
+    {
+      "check": "raw_event_files_parse",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "files Spark could not parse as JSON"
+    },
+    {
+      "check": "every_match_has_events",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "3,961 matches listed"
+    },
+    {
+      "check": "event_files_without_a_listed_match",
+      "severity": "warn",
+      "passed": false,
+      "failures": 274,
+      "detail": "962,185 events held back in staging; 3,961 files loaded"
+    },
+    {
+      "check": "event_index_is_gap_free",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "within each match the source numbers events 1..n; a gap means truncated input"
+    },
+    {
+      "check": "fact_event_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "13,911,986 events"
+    },
+    {
+      "check": "dim_match_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "3,961 rows"
+    },
+    {
+      "check": "dim_team_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "354 rows"
+    },
+    {
+      "check": "dim_player_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "11,889 rows"
+    },
+    {
+      "check": "dim_event_type_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "35 rows"
+    },
+    {
+      "check": "dim_position_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "26 rows"
+    },
+    {
+      "check": "dim_play_pattern_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "9 rows"
+    },
+    {
+      "check": "dim_date_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "1,362 rows"
+    },
+    {
+      "check": "dim_competition_season_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "80 rows"
+    },
+    {
+      "check": "fact_lineup_key_unique",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "152,133 rows"
+    },
+    {
+      "check": "fk_fact_event.team_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_team"
+    },
+    {
+      "check": "fk_fact_event.player_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_player"
+    },
+    {
+      "check": "fk_fact_event.event_type_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_event_type"
+    },
+    {
+      "check": "fk_fact_event.position_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_position"
+    },
+    {
+      "check": "fk_fact_event.play_pattern_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_play_pattern"
+    },
+    {
+      "check": "fk_fact_pass.recipient_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_player"
+    },
+    {
+      "check": "fk_fact_shot.player_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_player"
+    },
+    {
+      "check": "fk_fact_lineup.team_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_team"
+    },
+    {
+      "check": "fk_bridge_shot_player.player_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_player"
+    },
+    {
+      "check": "fk_dim_match.date_key",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_date"
+    },
+    {
+      "check": "fk_dim_match.home_team_id",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_team"
+    },
+    {
+      "check": "fk_dim_match.competition_season",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "-> dim_competition_season"
+    },
+    {
+      "check": "fact_pass_matches_pass_events",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "3,836,550 passes"
+    },
+    {
+      "check": "fact_shot_matches_shot_events",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "101,227 shots"
+    },
+    {
+      "check": "bridge_matches_freeze_frames",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "1,305,746 player positions"
+    },
+    {
+      "check": "xg_is_a_probability",
+      "severity": "error",
+      "passed": true,
+      "failures": 0,
+      "detail": "0 <= xg <= 1 on every shot"
+    },
+    {
+      "check": "locations_on_the_pitch",
+      "severity": "warn",
+      "passed": false,
+      "failures": 66,
+      "detail": "pitch is 120 x 80 in source units"
+    },
+    {
+      "check": "event_goals_equal_match_score",
+      "severity": "warn",
+      "passed": true,
+      "failures": 0,
+      "detail": "7,922 team-matches compared; disagreements are in dq_score_mismatch"
+    },
+    {
+      "check": "no_undeclared_event_fields",
+      "severity": "warn",
+      "passed": true,
+      "failures": 0,
+      "detail": "150 raw files sampled"
+    }
+  ]
+}

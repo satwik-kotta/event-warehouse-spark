@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Warehouse: run report</title>
+<style>
+:root{
+  --page:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9; --axis:#c3c2b7;
+  --series:#2a78d6; --series-soft:#cde2fb; --good:#0ca30c; --good-ink:#006300; --warn:#fab219; --warn-ink:#7a5200;
+}
+@media (prefers-color-scheme: dark){:root{
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+  --series:#3987e5; --series-soft:#104281; --good:#0ca30c; --good-ink:#0ca30c; --warn:#fab219; --warn-ink:#fab219;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:40px 16px 64px}
+h1{font-size:30px;line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+h2{font-size:18px;margin:44px 0 6px}
+p{margin:0 0 12px;color:var(--ink2);max-width:72ch}
+.lede{font-size:17px}
+a{color:var(--series)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:26px 0 0}
+.tile{background:var(--surface);border:1px solid var(--grid);border-radius:10px;padding:14px 16px}
+.tile b{display:block;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile span{color:var(--ink2);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--grid);border-radius:10px;padding:18px;margin-top:12px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.step{border:1px solid var(--grid);border-radius:8px;padding:12px}
+.step b{display:block;font-size:14px}
+.step small{color:var(--ink2);display:block;margin-top:2px}
+.step em{font-style:normal;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.chart{width:100%;height:380px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{color:var(--ink2);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td code{font-size:13px}
+.bar{height:8px;border-radius:0 4px 4px 0;background:var(--series);min-width:2px}
+.bench{display:grid;grid-template-columns:150px 1fr 70px;gap:8px 12px;align-items:center;font-size:14px}
+.bench .n{text-align:right;font-variant-numeric:tabular-nums}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:4px 28px;font-size:14px}
+.check{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--grid)}
+.check .s{font-weight:700;font-size:12px;width:44px;flex:none}
+.check.pass .s{color:var(--good-ink)} .check.warn .s{color:var(--warn-ink)}
+.check small{color:var(--muted);display:block}
+.finding{border-left:3px solid var(--warn);padding:2px 0 2px 14px;margin:14px 0}
+.finding.ok{border-left-color:var(--good)}
+.finding b{display:block}
+.finding span{color:var(--ink2)}
+footer{margin-top:48px;color:var(--muted);font-size:13px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+footer img{height:22px;background:#fff;padding:3px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Event Warehouse</h1>
+  <p class="lede">A Spark pipeline that turns 13&nbsp;GB of nested JSON match events into a tested star schema. This page is the report of the latest full run: what was loaded, what was held back, and how much faster the result is to query.</p>
+  <div class="tiles" id="tiles"></div>
+
+  <h2>Pipeline</h2>
+  <p>Each stage reads only the output of the one before it, so the raw JSON is parsed exactly once.</p>
+  <div class="card"><div class="flow" id="flow"></div></div>
+
+  <h2>What the checks found</h2>
+  <p>Error-level checks stop the run. Warnings mean the source disagrees with itself: the rows are set aside and reported rather than loaded silently.</p>
+  <div class="card">
+    <div id="findings"></div>
+    <div class="checks" id="checks"></div>
+  </div>
+
+  <h2>Same question, raw files against the warehouse</h2>
+  <p id="benchtext"></p>
+  <div class="card"><div class="bench" id="bench"></div></div>
+
+  <h2>Tables</h2>
+  <p>Facts are partitioned by competition and season. Bars show rows on a log scale.</p>
+  <div class="card scroll"><table id="tables"></table></div>
+
+  <h2>Events by type</h2>
+  <p>Four event types account for most of the volume, which is why passes and shots get their own narrow fact tables.</p>
+  <div class="card"><div class="chart" id="types" role="img" aria-label="Bar chart of events by type"></div></div>
+
+  <h2>A question the marts answer directly: goals against expected goals</h2>
+  <p>One dot per team per season (20 or more matches), read from <code>mart_team_match</code>. Teams above the line scored more than the quality of their chances predicted.</p>
+  <div class="card"><div class="chart" id="xg" role="img" aria-label="Scatter chart of goals against expected goals by team-season"></div></div>
+
+  <footer>
+    <img src="statsbomb-logo.png" alt="StatsBomb">
+    <span>Data: <a href="https://github.com/statsbomb/open-data">StatsBomb Open Data</a>, commit <code id="sha"></code>. Code: <a href="https://github.com/satwik-kotta/event-warehouse-spark">github.com/satwik-kotta/event-warehouse-spark</a></span>
+  </footer>
+</main>
+<script src="vendor/echarts.min.js"></script>
+<script src="data.js"></script>
+<script>
+const D = window.DATA, R = D.report, B = D.bench;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = n => n.toLocaleString("en-US");
+const short = n => n >= 1e9 ? (n/1e9).toFixed(1)+" GB" : n >= 1e6 ? (n/1e6).toFixed(1)+" MB" : n >= 1e3 ? Math.round(n/1e3)+" KB" : n+" B";
+const mil = n => n >= 1e6 ? (n/1e6).toFixed(1)+"M" : fmt(n);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+const warns = R.checks.filter(c => !c.passed), passed = R.checks.length - warns.length;
+const held = R.checks.find(c => c.check === "event_files_without_a_listed_match");
+const heldEvents = parseInt(held.detail.replace(/,/g, ""), 10);
+[[short(R.source.bytes), `raw JSON in ${fmt(R.source.files)} files`],
+ [mil(R.tables.fact_event.rows), "events loaded into the star schema"],
+ [short(R.warehouse_bytes), `as Parquet, ${Math.round(R.source.bytes / R.warehouse_bytes)}× smaller`],
+ [Math.round(R.seconds.total / 60) + " min", "full build on 2 CPU cores"],
+ [`${passed} of ${R.checks.length}`, `checks pass, ${warns.length} warnings`],
+ [B.speedup + "×", "faster for the benchmark query"]
+].forEach(([v, l]) => { const t = el("div", "tile"); t.append(el("b", "", v), el("span", "", l)); document.getElementById("tiles").append(t); });
+
+[["Raw JSON", "events, lineups, matches, competitions", `${fmt(R.source.files)} files`],
+ ["Staging", "explicit schemas, typed Parquet, unmatched files set aside", R.seconds.staging + " s"],
+ ["Star schema", "5 fact and bridge tables, 8 dimensions", R.seconds.model + " s"],
+ ["Marts", "plain SQL with window functions", R.seconds.marts + " s"],
+ ["Quality checks", `${R.checks.length} checks on keys, joins, totals and scores`, R.seconds.quality + " s"]
+].forEach(([a, b, c]) => { const s = el("div", "step"); s.append(el("b", "", a), el("small", "", b), el("em", "", c)); document.getElementById("flow").append(s); });
+
+const F = document.getElementById("findings");
+const finding = (ok, title, text) => { const f = el("div", "finding" + (ok ? " ok" : "")); f.append(el("b", "", title), el("span", "", text)); F.append(f); };
+finding(false, `${fmt(held.failures)} event files (${fmt(heldEvents)} events) have no entry in the match listing`,
+  "All but two are German Bundesliga matches whose season listing is incomplete. They cannot be placed in a competition or season, so they are kept in staging and left out of the facts.");
+finding(true, `Goals counted from events equal the published score in all ${fmt(D.team_matches_reconciled)} team-matches`,
+  "Scores come from the match files and goals from the event files, so this compares two independent sources. Own goals are included and shoot-out penalties excluded.");
+const off = R.checks.find(c => c.check === "locations_on_the_pitch");
+finding(false, `${fmt(off.failures)} events sit just outside the pitch boundary`, "Out of " + mil(R.tables.fact_event.rows) + " events. Kept, and flagged, because the rest of each record is valid.");
+
+const C = document.getElementById("checks");
+[...R.checks].sort((a, b) => a.passed - b.passed).forEach(c => {
+  const row = el("div", "check " + (c.passed ? "pass" : "warn"));
+  row.append(el("span", "s", c.passed ? "✓ pass" : "! warn"), el("div", "", `${c.check.replace(/_/g, " ")}<small>${c.detail}</small>`));
+  C.append(row);
+});
+
+document.getElementById("benchtext").textContent =
+  `${B.question[0].toUpperCase() + B.question.slice(1)}. From the raw files Spark must parse every event file to find the shots. From the warehouse it reads one partition of fact_shot. Both return identical rows for ${B.teams} teams.`;
+const BN = document.getElementById("bench"), bmax = B.raw_json_seconds;
+[["Raw JSON", B.raw_json_seconds], ["Warehouse", B.warehouse_seconds]].forEach(([n, s]) => {
+  const bar = el("div", "bar"); bar.style.width = Math.max(0.4, s / bmax * 100) + "%";
+  BN.append(el("div", "", n), el("div", "", "").appendChild(bar).parentNode, el("div", "n", s + " s"));
+});
+
+const T = document.getElementById("tables");
+T.append(el("tr", "", "<th>Table</th><th>Grain</th><th class=n>Rows</th><th style='width:26%'></th><th class=n>Size</th>"));
+const order = Object.entries(R.tables).sort((a, b) => b[1].rows - a[1].rows), lmax = Math.log10(order[0][1].rows);
+order.forEach(([name, t]) => {
+  const tr = el("tr", "", `<td><code>${name}</code></td><td>${D.grain[name] || ""}</td><td class=n>${fmt(t.rows)}</td><td><div class=bar style="width:${Math.max(2, Math.log10(Math.max(t.rows, 1)) / lmax * 100)}%"></div></td><td class=n>${short(t.bytes)}</td>`);
+  T.append(tr);
+});
+document.getElementById("sha").textContent = R.source.commit.slice(0, 7);
+
+function draw() {
+  const ink = css("--ink"), ink2 = css("--ink2"), muted = css("--muted"), grid = css("--grid"), axis = css("--axis"), series = css("--series"), surface = css("--surface");
+  const tip = { backgroundColor: surface, borderColor: grid, textStyle: { color: ink, fontSize: 13 } };
+  const types = echarts.init(document.getElementById("types")); const et = [...D.event_types].reverse();
+  types.setOption({
+    grid: { left: 8, right: 64, top: 8, bottom: 8, containLabel: true }, tooltip: { ...tip, trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: fmt },
+    xAxis: { type: "value", axisLabel: { color: muted, formatter: v => v / 1e6 + "M" }, splitLine: { lineStyle: { color: grid } } },
+    yAxis: { type: "category", data: et.map(d => d.name), axisLabel: { color: ink2 }, axisLine: { lineStyle: { color: axis } }, axisTick: { show: false } },
+    series: [{ type: "bar", data: et.map(d => d.events), barWidth: 14, itemStyle: { color: series, borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: "right", color: ink2, formatter: p => mil(p.value) } }]
+  });
+  const xg = echarts.init(document.getElementById("xg")); const hi = Math.ceil(Math.max(...D.team_seasons.map(d => Math.max(d.goals, d.xg))) / 10) * 10;
+  xg.setOption({
+    grid: { left: 8, right: 24, top: 16, bottom: 36, containLabel: true },
+    tooltip: { ...tip, formatter: p => p.seriesType === "scatter" ? `<b>${p.data[2]}</b><br>${p.data[3]}<br>${p.data[4]} matches<br>${p.data[1]} goals from ${p.data[0]} xG` : "" },
+    xAxis: { type: "value", min: 0, max: hi, name: "Expected goals", nameLocation: "middle", nameGap: 28, nameTextStyle: { color: ink2 }, axisLabel: { color: muted }, splitLine: { lineStyle: { color: grid } } },
+    yAxis: { type: "value", min: 0, max: hi, name: "Goals", nameTextStyle: { color: ink2 }, axisLabel: { color: muted }, splitLine: { lineStyle: { color: grid } } },
+    series: [
+      { type: "line", data: [[0, 0], [hi, hi]], symbol: "none", silent: true, lineStyle: { color: axis, width: 1.5, type: "dashed" },
+        endLabel: { show: true, formatter: "goals = xG", color: muted, offset: [-70, -10] } },
+      { type: "scatter", symbolSize: 9, data: D.team_seasons.map(d => [d.xg, d.goals, d.team, d.season, d.matches]),
+        itemStyle: { color: series, opacity: .8, borderColor: surface, borderWidth: 1.5 } }]
+  });
+  addEventListener("resize", () => { types.resize(); xg.resize(); });
+}
+draw();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => location.reload());
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "question": "shots and xG per team, La Liga 2015/2016",
+  "teams": 20,
+  "raw_json_seconds": 67.6,
+  "warehouse_seconds": 0.39,
+  "speedup": 175,
+  "answers_identical": true
+}
