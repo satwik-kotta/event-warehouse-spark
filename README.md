@@ -57,6 +57,40 @@ raw JSON ──► staging ──► star schema ──► marts ──► quali
 
 **Marts** (`sql/`) are plain SQL files run with Spark SQL: `mart_team_match` (one row per team per match, with a rolling five-match expected-goals average from a window function) and `mart_player_season` (ranked within each season).
 
+## dbt layer
+
+The Spark build stops at Parquet. On top of it, [`dbt/`](dbt/) is a dbt project that reads those Parquet tables in place with DuckDB (no load step) and rebuilds the reporting layer the way an analytics team would maintain it: staging views, an intermediate model, and three marts, all documented and tested.
+
+**[dbt docs: lineage graph, models and tests](https://satwik-kotta.github.io/event-warehouse-spark/dbt/)**
+
+```
+sources (Parquet star schema) ──► staging (5 views) ──► int_match_sides ──► fct_team_match ──► rpt_team_season
+                                                                        └─► fct_player_season
+```
+
+| Model | Grain | Notes |
+|---|---|---|
+| `stg_matches`, `stg_shots`, `stg_passes`, `stg_events`, `stg_lineups` | one row per source row | names attached; shoot-out kicks removed once, in `stg_shots` |
+| `int_match_sides` | team per match | each match seen from both sides |
+| `fct_team_match` | team per match | port of `sql/mart_team_match.sql`, with a rolling five match xG |
+| `fct_player_season` | player per competition-season | port of `sql/mart_player_season.sql`, ranked on xG |
+| `rpt_team_season` | team per competition-season | new report table: record, goals, xG for and against |
+
+**50 dbt tests** run with `dbt build`:
+
+- `unique`, `not_null`, `relationships` and `accepted_values` on keys and columns, plus two custom generic tests in `dbt/macros/`: `unique_combination` for the grain of every table and `expression_is_true` for value rules (xG between 0 and 1, wins + draws + losses = matches).
+- `assert_goals_reconcile_with_score`: goals from shot events plus own goals equal the published score for every team in every match.
+- `assert_dbt_mart_matches_spark_mart`: the dbt model reproduces the Spark SQL mart row for row, with the same goals, shots and xG to 1e-9. This is what makes the port safe to switch to.
+
+On the 2022 World Cup (64 matches, 234,637 events) all 50 pass. Argentina, the winner, leads on xG created (13.94 over 7 matches), while the Netherlands scored 10 goals from 4.99 xG, the biggest overperformance. CI builds the synthetic test warehouse and runs `dbt build` on it on every push.
+
+```bash
+make build                     # Spark writes the Parquet warehouse
+make dbt                       # dbt build, then dbt docs written to docs/dbt/
+```
+
+`EWH_OUT` points dbt at the warehouse folder, the same variable the Spark build uses.
+
 ## Data quality
 
 Checks have two levels (`warehouse/quality.py`). An **error** means the warehouse itself is wrong and stops the run. A **warning** means the source disagrees with itself: the rows are set aside, counted and reported.
@@ -118,10 +152,11 @@ make test        # no download needed
 warehouse/   config, schemas, staging, model, marts, quality, run, bench
 sql/         mart_team_match.sql, mart_player_season.sql
 dashboard/   build.py (run report data)
-docs/        run report page
+docs/        run report page, and dbt docs in docs/dbt/
+dbt/         dbt project: staging, intermediate and mart models with tests
 reports/     run_report.json and bench.json from the latest full run
 tests/       synthetic source and pipeline tests
-scripts/     download.sh
+scripts/     download.sh, build_sample.py (synthetic warehouse for dbt in CI)
 ```
 
 ## Data source

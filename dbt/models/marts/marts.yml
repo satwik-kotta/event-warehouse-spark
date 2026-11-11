@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: fct_team_match
+    description: One row per team per match. Ported from sql/mart_team_match.sql (Spark SQL) to dbt.
+    data_tests:
+      - unique_combination: {arguments: {columns: [match_id, team_id]}}
+    columns:
+      - name: match_id
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: "ref('stg_matches')", field: match_id}}
+      - name: team_id
+        data_tests:
+          - not_null
+          - relationships: {arguments: {to: "source('warehouse', 'dim_team')", field: team_id}}
+      - name: result
+        description: W, D or L from the published score.
+        data_tests:
+          - accepted_values: {arguments: {values: ['W', 'D', 'L']}}
+      - name: xg
+        description: Sum of expected goals, excluding shoot-out penalties.
+        data_tests:
+          - not_null
+          - expression_is_true: {arguments: {expression: "xg >= 0"}}
+      - name: xg_rolling_5
+        description: Average xG over the team's last five matches in the same competition-season.
+  - name: fct_player_season
+    description: One row per player per competition-season, ranked on xG within the season.
+    data_tests:
+      - unique_combination: {arguments: {columns: [competition_id, season_id, player_id]}}
+    columns:
+      - name: player_id
+        data_tests:
+          - relationships: {arguments: {to: "source('warehouse', 'dim_player')", field: player_id}}
+      - name: pass_completion
+        data_tests:
+          - expression_is_true: {arguments: {expression: "pass_completion is null or pass_completion between 0 and 1"}}
+  - name: rpt_team_season
+    description: One row per team per competition-season, for reporting.
+    data_tests:
+      - unique_combination: {arguments: {columns: [competition_id, season_id, team_id]}}
+      - expression_is_true: {arguments: {expression: "wins + draws + losses = matches"}}

@@ -1,0 +1,9 @@
+# The Spark build writes Parquet. dbt reads it in place with DuckDB, so there is no load step.
+# EWH_OUT points at the warehouse folder (default: ../data/warehouse, the same default as warehouse/config.py).
+event_warehouse:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "target/event_warehouse.duckdb"
+      threads: 4

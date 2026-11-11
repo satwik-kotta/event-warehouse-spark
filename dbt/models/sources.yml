@@ -1,0 +1,61 @@
+version: 2
+
+sources:
+  - name: warehouse
+    description: >
+      The star schema written by the PySpark build (warehouse/model.py and warehouse/marts.py), read in place
+      from Parquet. Partitioned tables are read with hive partitioning, so competition_id and season_id come
+      from the folder names.
+    meta:
+      external_location: "read_parquet('{{ env_var('EWH_OUT', '../data/warehouse') }}/{name}/**/*.parquet', hive_partitioning = true, union_by_name = true)"
+    tables:
+      - name: fact_event
+        description: One row per event.
+        columns:
+          - name: event_id
+            data_tests: [unique, not_null]
+          - name: match_id
+            data_tests:
+              - not_null
+              - relationships: {arguments: {to: "source('warehouse', 'dim_match')", field: match_id}}
+          - name: event_type_id
+            data_tests:
+              - relationships: {arguments: {to: "source('warehouse', 'dim_event_type')", field: event_type_id}}
+      - name: fact_pass
+        description: One row per pass, with the attributes only passes have.
+        columns:
+          - name: event_id
+            data_tests: [unique, not_null]
+      - name: fact_shot
+        description: One row per shot, with StatsBomb expected goals.
+        columns:
+          - name: event_id
+            data_tests: [unique, not_null]
+          - name: xg
+            data_tests:
+              - expression_is_true: {arguments: {expression: "xg between 0 and 1"}}
+      - name: fact_lineup
+        description: One row per player per match.
+        data_tests:
+          - unique_combination: {arguments: {columns: [match_id, player_id]}}
+      - name: dim_match
+        columns:
+          - name: match_id
+            data_tests: [unique, not_null]
+      - name: dim_team
+        columns:
+          - name: team_id
+            data_tests: [unique, not_null]
+      - name: dim_player
+        columns:
+          - name: player_id
+            data_tests: [unique, not_null]
+      - name: dim_event_type
+        columns:
+          - name: event_type_id
+            data_tests: [unique, not_null]
+      - name: dim_competition_season
+        data_tests:
+          - unique_combination: {arguments: {columns: [competition_id, season_id]}}
+      - name: mart_team_match
+        description: The Spark SQL version of the team match mart, kept to check the dbt model against it.

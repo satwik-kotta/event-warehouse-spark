@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: stg_matches
+    description: Matches with competition, season and team names.
+    columns:
+      - name: match_id
+        data_tests: [unique, not_null]
+      - name: competition_name
+        data_tests: [not_null]
+  - name: stg_shots
+    description: Shots that count towards the score. Shoot-out kicks (period 5) are removed here.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+  - name: stg_passes
+    description: Passes.
+  - name: stg_events
+    description: All events with the event type name.
+  - name: stg_lineups
+    description: Lineups with competition and season, for player season totals.
+  - name: int_match_sides
+    description: Each match seen from both teams.
+    data_tests:
+      - unique_combination: {arguments: {columns: [match_id, team_id]}}

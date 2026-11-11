@@ -11,3 +11,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt
       - run: python -m pytest -q tests
+      - name: dbt build on the synthetic warehouse
+        run: |
+          python scripts/build_sample.py data/sample
+          cd dbt && EWH_OUT=../data/sample/warehouse DBT_PROFILES_DIR=. dbt build
