@@ -146,7 +146,7 @@ make test        # no download needed
 ## Limits
 
 - **Batch, full refresh.** Each run rebuilds everything. An incremental load keyed on the source's `last_updated` field is the obvious next step.
-- **Local Spark.** Built and measured on one machine with 2 cores. The code uses nothing local-only, but it has not been run on a cluster.
+- **Local Spark and Databricks serverless.** The full 13 GB build was measured on one machine with 2 cores. A 610 match subset also runs on Databricks serverless and publishes to Unity Catalog ([results](databricks/README.md#results)); the full source has not been run there.
 - **Benchmark is one query.** It shows what partition pruning and columnar storage do for a season-level question. A query that needs every event would gain less.
 - **Tactics and 360 tracking frames are not modelled.**
 
