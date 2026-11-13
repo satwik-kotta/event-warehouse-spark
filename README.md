@@ -135,6 +135,10 @@ make test        # no download needed
 
 `EWH_RAW`, `EWH_OUT` and `EWH_MEMORY` override the data locations and Spark driver memory.
 
+### On Databricks
+
+[`databricks/`](databricks/) runs the same package on serverless compute and publishes the warehouse to Unity Catalog as documented Delta tables with keys, liquid clustering and a check history table, with a dashboard and Genie space on top. Steps are in [`databricks/README.md`](databricks/README.md).
+
 ## Tests
 
 `make test` builds a small synthetic source with the same shape as the real one (three matches, an own goal, a shoot-out) and runs the whole pipeline on it. The tests then break the data eleven ways and confirm each check catches its fault: a dropped event, a duplicated key, a missing dimension row, a truncated file, a new field, a wrong score, an event file with no match. They run in GitHub Actions on every push.
@@ -154,6 +158,7 @@ sql/         mart_team_match.sql, mart_player_season.sql
 dashboard/   build.py (run report data)
 docs/        run report page, and dbt docs in docs/dbt/
 dbt/         dbt project: staging, intermediate and mart models with tests
+databricks/  notebooks to run on Databricks and publish to Unity Catalog, dashboard queries, Genie setup
 reports/     run_report.json and bench.json from the latest full run
 tests/       synthetic source and pipeline tests
 scripts/     download.sh, build_sample.py (synthetic warehouse for dbt in CI)

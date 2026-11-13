@@ -4,7 +4,9 @@ from pyspark.sql import functions as F
 from . import schemas
 
 def match_id_from_filename():
-    return F.regexp_extract(F.input_file_name(), r"(\d+)\.json$", 1).cast("int")
+    # _metadata.file_path rather than input_file_name(): the latter is blocked on Unity Catalog
+    # and serverless compute on Databricks, the hidden metadata column works everywhere.
+    return F.regexp_extract(F.col("_metadata.file_path"), r"(\d+)\.json$", 1).cast("int")
 
 
 def read_events(spark, raw):
